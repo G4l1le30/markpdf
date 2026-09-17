@@ -13,9 +13,9 @@ from .converter import convert_pdf_to_text
 def main():
     parser = argparse.ArgumentParser(
         prog="markpdf",
-        description="Fast, offline PDF to Markdown & Text converter with diagram OCR and table extraction.",
+        description="Fast, offline PDF & Image to Markdown & Text converter with diagram OCR and table extraction.",
     )
-    parser.add_argument("pdf_files", nargs="*", default=[], help="The PDF file(s) to convert.")
+    parser.add_argument("files", nargs="*", default=[], help="The PDF or image file(s) to convert (.pdf, .png, .jpg, .webp, .tiff).")
     parser.add_argument(
         "-f",
         "--format",
@@ -28,6 +28,11 @@ def main():
         "--markdown",
         action="store_true",
         help="Shorthand for --format md.",
+    )
+    parser.add_argument(
+        "--toc",
+        action="store_true",
+        help="Generate a Markdown Table of Contents from PDF outline/bookmarks when in Markdown mode.",
     )
     parser.add_argument(
         "--ocr",
@@ -86,7 +91,7 @@ def main():
     parser.add_argument(
         "-o",
         "--output",
-        help="Target output file path or directory (default: same directory as input PDF).",
+        help="Target output file path or directory (default: same directory as input file).",
     )
     parser.add_argument(
         "--page-markers",
@@ -124,24 +129,24 @@ def main():
     elif args.no_ocr:
         ocr_mode = "never"
 
-    pdf_files = list(args.pdf_files)
-    if not pdf_files:
+    input_files = list(args.files)
+    if not input_files:
         while True:
             try:
-                pdf_input = input("PDF file path (or press Enter to finish): ").strip()
-                if not pdf_input:
+                user_input = input("File path (or press Enter to finish): ").strip()
+                if not user_input:
                     break
-                pdf_files.append(pdf_input)
+                input_files.append(user_input)
             except EOFError:
                 break
 
-    if len(pdf_files) > 1 and args.output and not os.path.isdir(args.output):
+    if len(input_files) > 1 and args.output and not os.path.isdir(args.output):
         os.makedirs(args.output, exist_ok=True)
 
     success = True
-    for pdf_file in pdf_files:
+    for file_path in input_files:
         res = convert_pdf_to_text(
-            pdf_path=pdf_file,
+            file_path=file_path,
             output_path=args.output,
             output_format=out_format,
             ocr_mode=ocr_mode,
@@ -153,6 +158,7 @@ def main():
             label_graphics=args.label_graphics,
             verbose=not args.quiet,
             add_page_markers=args.page_markers,
+            add_toc=args.toc,
         )
         if not res:
             success = False

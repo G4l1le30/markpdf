@@ -73,8 +73,11 @@ pip install -e .
 
 ### Basic Commands
 ```bash
-# Convert to Markdown (.md) with tables and diagram OCR
+# Convert PDF to Markdown (.md) with tables and diagram OCR
 markpdf -m document.pdf
+
+# Convert standalone image (.png, .jpg, .webp) to Markdown via OCR
+markpdf -m screenshot.png
 
 # Convert to Plain Text (.txt)
 markpdf document.pdf
@@ -85,6 +88,9 @@ markpdf document.pdf -o output.md
 
 ### Advanced Options
 ```bash
+# Generate Markdown Table of Contents from PDF outline/bookmarks
+markpdf --toc -m book.pdf
+
 # Force full-page OCR across all pages (e.g. corrupted text layer)
 markpdf --force-ocr scanned_book.pdf
 
@@ -107,6 +113,7 @@ markpdf --page-markers -m document.pdf
 |---|---|
 | `-m, --markdown` | Shorthand for `--format md` (Markdown output with tables & headings) |
 | `-f, --format {auto,txt,md}` | Output format (default: auto based on output extension) |
+| `--toc` | Generate Markdown Table of Contents from PDF outline/bookmarks |
 | `-o, --output <path>` | Custom destination file or directory |
 | `--ocr {auto,always,never}` | OCR mode (default: `auto` for scanned pages/graphics) |
 | `--force-ocr` | Force OCR across all pages |

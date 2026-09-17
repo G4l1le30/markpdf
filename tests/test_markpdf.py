@@ -7,7 +7,11 @@ import tempfile
 import unittest
 
 from markpdf.tables import format_markdown_table
-from markpdf.converter import format_markdown_heading, convert_pdf_to_text
+from markpdf.converter import (
+    format_markdown_heading,
+    format_markdown_toc,
+    convert_pdf_to_text,
+)
 
 
 class TestMarkPDF(unittest.TestCase):
@@ -28,6 +32,18 @@ class TestMarkPDF(unittest.TestCase):
         self.assertEqual(format_markdown_heading("1.1 Latar Belakang"), "### 1.1 Latar Belakang")
         self.assertEqual(format_markdown_heading("3.5.4 Sub Section"), "#### 3.5.4 Sub Section")
         self.assertEqual(format_markdown_heading("Normal paragraph text."), "Normal paragraph text.")
+
+    def test_format_markdown_toc(self):
+        toc_items = [
+            [1, "Introduction", 1],
+            [2, "Background", 2],
+            [1, "Methodology", 5],
+        ]
+        md_toc = format_markdown_toc(toc_items)
+        self.assertIn("# Table of Contents", md_toc)
+        self.assertIn("- [Introduction](#introduction) *(p. 1)*", md_toc)
+        self.assertIn("  - [Background](#background) *(p. 2)*", md_toc)
+        self.assertIn("- [Methodology](#methodology) *(p. 5)*", md_toc)
 
     def test_convert_pdf_digital(self):
         try:
@@ -54,6 +70,23 @@ class TestMarkPDF(unittest.TestCase):
             md_out = convert_pdf_to_text(pdf_path, output_format="md", verbose=False)
             self.assertTrue(os.path.exists(md_out))
             self.assertTrue(md_out.endswith(".md"))
+
+    def test_convert_standalone_image(self):
+        try:
+            from PIL import Image, ImageDraw
+        except ImportError:
+            self.skipTest("Pillow not installed")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            img_path = os.path.join(tmpdir, "sample.png")
+            img = Image.new("RGB", (300, 100), color=(255, 255, 255))
+            d = ImageDraw.Draw(img)
+            d.text((20, 40), "Sample Image Text", fill=(0, 0, 0))
+            img.save(img_path)
+
+            res = convert_pdf_to_text(img_path, output_format="md", verbose=False)
+            self.assertTrue(os.path.exists(res))
+            self.assertTrue(res.endswith(".md"))
 
 
 if __name__ == "__main__":

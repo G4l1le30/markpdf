@@ -28,6 +28,9 @@ except ImportError:
 from .ocr import is_ocr_available, ocr_image_pil, ocr_pixmap
 from .tables import extract_page_tables
 
+SUPPORTED_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".tiff", ".bmp")
+SUPPORTED_EXTENSIONS = (".pdf",) + SUPPORTED_IMAGE_EXTENSIONS
+
 
 def format_markdown_heading(text: str) -> str:
     """Detect heading patterns and prepend markdown heading markers (#, ##, ###)."""
@@ -45,6 +48,18 @@ def format_markdown_heading(text: str) -> str:
         return f"{prefix} {trimmed}"
 
     return text
+
+
+def format_markdown_toc(toc_items: list) -> str:
+    """Format PyMuPDF doc.get_toc() list into a GitHub Markdown Table of Contents."""
+    if not toc_items:
+        return ""
+    lines = ["# Table of Contents", ""]
+    for lvl, title, pno in toc_items:
+        indent = "  " * (max(1, lvl) - 1)
+        slug = re.sub(r"[^\w\s-]", "", title.lower()).strip().replace(" ", "-")
+        lines.append(f"{indent}- [{title}](#{slug}) *(p. {pno})*")
+    return "\n".join(lines)
 
 
 def extract_graphics_candidates(
@@ -94,8 +109,67 @@ def extract_graphics_candidates(
     return candidates
 
 
+def convert_image(
+    image_path: str,
+    output_path: Optional[str] = None,
+    output_format: str = "txt",
+    lang: str = "eng",
+    label_graphics: bool = True,
+    verbose: bool = True,
+) -> Optional[str]:
+    """
+    Convert a standalone image (.png, .jpg, .webp, .tiff) to Markdown or plain text via OCR.
+    """
+    if not os.path.exists(image_path):
+        print(f"Error: Image file not found at '{image_path}'", file=sys.stderr)
+        return None
+
+    if not is_ocr_available():
+        print("Error: Tesseract OCR is not available. Please install tesseract.", file=sys.stderr)
+        return None
+
+    try:
+        from PIL import Image
+
+        img = Image.open(image_path)
+        if verbose:
+            print(f"Processing image '{image_path}' ({img.width}x{img.height}, format: {output_format})...")
+
+        txt = ocr_image_pil(img, lang=lang, upscale=True)
+
+        is_md = output_format == "md"
+        if is_md:
+            if label_graphics:
+                content = "> **[Image OCR]**\n" + "\n".join(f"> {line}" for line in txt.split("\n"))
+            else:
+                content = txt
+        else:
+            content = f"[Image OCR]:\n{txt}" if label_graphics else txt
+
+        ext = ".md" if is_md else ".txt"
+        if output_path:
+            if os.path.isdir(output_path):
+                base_name = os.path.splitext(os.path.basename(image_path))[0]
+                final_output_path = os.path.join(output_path, f"{base_name}{ext}")
+            else:
+                final_output_path = output_path
+        else:
+            base_name = os.path.splitext(image_path)[0]
+            final_output_path = f"{base_name}{ext}"
+
+        with open(final_output_path, "w", encoding="utf-8") as out_f:
+            out_f.write(content.strip() + "\n")
+
+        print(f"Successfully converted '{image_path}' to '{final_output_path}'")
+        return final_output_path
+
+    except Exception as e:
+        print(f"An error occurred during image conversion: {e}", file=sys.stderr)
+        return None
+
+
 def convert_pdf_to_text(
-    pdf_path: str,
+    file_path: str,
     output_path: Optional[str] = None,
     output_format: str = "txt",
     ocr_mode: str = "auto",
@@ -107,12 +181,13 @@ def convert_pdf_to_text(
     label_graphics: bool = True,
     verbose: bool = True,
     add_page_markers: bool = False,
+    add_toc: bool = False,
 ) -> Optional[str]:
     """
-    Converts a PDF file to a plain text or Markdown file with OCR support for scanned pages and graphics.
+    Converts a PDF or image file to plain text or Markdown with OCR and table extraction.
 
     Args:
-        pdf_path: Path to the input PDF file.
+        file_path: Path to the input PDF or image file.
         output_path: Target output text or markdown file path or directory.
         output_format: 'txt' for plain text, 'md' for structured Markdown with tables & headings.
         ocr_mode: 'auto' (OCR if page text < min_chars), 'always' (force OCR), 'never' (disable OCR).
@@ -121,18 +196,34 @@ def convert_pdf_to_text(
         dpi: Rendering DPI resolution for OCR.
         min_chars: Minimum character threshold for auto full-page OCR.
         min_graphic_dim: Minimum pixel dimension for graphics/diagrams to be OCR'd.
-        label_graphics: Whether to label graphic OCR blocks with [Diagram/Graphic OCR].
+        label_graphics: Whether to label graphic OCR blocks.
         verbose: Whether to log extraction progress.
         add_page_markers: Whether to add page delimiters in output.
+        add_toc: Whether to generate a Markdown Table of Contents from PDF outline/bookmarks.
 
     Returns:
         The path to the output file, or None if an error occurred.
     """
-    if not os.path.exists(pdf_path):
-        print(f"Error: PDF file not found at '{pdf_path}'", file=sys.stderr)
+    if not os.path.exists(file_path):
+        print(f"Error: File not found at '{file_path}'", file=sys.stderr)
         return None
-    if not pdf_path.lower().endswith(".pdf"):
-        print(f"Error: Input file '{pdf_path}' is not a PDF.", file=sys.stderr)
+
+    lower_path = file_path.lower()
+
+    # Standalone image support
+    if lower_path.endswith(SUPPORTED_IMAGE_EXTENSIONS):
+        return convert_image(
+            image_path=file_path,
+            output_path=output_path,
+            output_format=output_format,
+            lang=lang,
+            label_graphics=label_graphics,
+            verbose=verbose,
+        )
+
+    if not lower_path.endswith(".pdf"):
+        supported = ", ".join(SUPPORTED_EXTENSIONS)
+        print(f"Error: Unsupported file format '{file_path}'. Supported: {supported}", file=sys.stderr)
         return None
 
     ocr_available = is_ocr_available()
@@ -159,13 +250,24 @@ def convert_pdf_to_text(
         is_md = output_format == "md"
 
         if HAS_PYMUPDF:
-            doc = pymupdf.open(pdf_path)
+            doc = pymupdf.open(file_path)
             total_pages = len(doc)
+
+            # Check for document TOC / outline bookmarks
+            if is_md and add_toc:
+                try:
+                    toc_items = doc.get_toc()
+                    if toc_items:
+                        md_toc = format_markdown_toc(toc_items)
+                        if md_toc:
+                            pages_text.append(md_toc)
+                except Exception:
+                    pass
 
             if verbose:
                 ocr_info = f"OCR: {ocr_mode}" + (", graphics OCR: on" if ocr_graphics and ocr_available else "")
                 format_info = f"format: {output_format}"
-                print(f"Processing '{pdf_path}' ({total_pages} page{'s' if total_pages != 1 else ''}, {format_info}, {ocr_info})...")
+                print(f"Processing '{file_path}' ({total_pages} page{'s' if total_pages != 1 else ''}, {format_info}, {ocr_info})...")
 
             for page_idx in range(total_pages):
                 page = doc[page_idx]
@@ -308,8 +410,8 @@ def convert_pdf_to_text(
         else:
             # Fallback to PyPDF2 (native extraction only)
             if verbose:
-                print(f"Processing '{pdf_path}' using PyPDF2 (native extraction only)...")
-            with open(pdf_path, "rb") as f:
+                print(f"Processing '{file_path}' using PyPDF2 (native extraction only)...")
+            with open(file_path, "rb") as f:
                 reader = PyPDF2.PdfReader(f)
                 total_pages = len(reader.pages)
                 for page_idx in range(total_pages):
@@ -331,12 +433,12 @@ def convert_pdf_to_text(
         ext = ".md" if is_md else ".txt"
         if output_path:
             if os.path.isdir(output_path):
-                base_name = os.path.splitext(os.path.basename(pdf_path))[0]
+                base_name = os.path.splitext(os.path.basename(file_path))[0]
                 final_output_path = os.path.join(output_path, f"{base_name}{ext}")
             else:
                 final_output_path = output_path
         else:
-            base_name = os.path.splitext(pdf_path)[0]
+            base_name = os.path.splitext(file_path)[0]
             final_output_path = f"{base_name}{ext}"
 
         combined_text = "\n\n".join(pages_text).strip() + "\n"
@@ -344,9 +446,9 @@ def convert_pdf_to_text(
         with open(final_output_path, "w", encoding="utf-8") as out_f:
             out_f.write(combined_text)
 
-        print(f"Successfully converted '{pdf_path}' to '{final_output_path}'")
+        print(f"Successfully converted '{file_path}' to '{final_output_path}'")
         return final_output_path
 
     except Exception as e:
-        print(f"An error occurred during PDF conversion: {e}", file=sys.stderr)
+        print(f"An error occurred during conversion: {e}", file=sys.stderr)
         return None
