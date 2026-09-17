@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "markpdf"
+version = "0.2.0"
+description = "Fast, offline PDF to Markdown & Text converter with diagram OCR and table extraction."
+readme = "README.md"
+authors = [{ name = "Joshua Washington" }]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "pymupdf>=1.24.0",
+    "pytesseract>=0.3.10",
+    "pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[project.scripts]
+markpdf = "markpdf.cli:main"
+pdf2text = "markpdf.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["markpdf*"]
