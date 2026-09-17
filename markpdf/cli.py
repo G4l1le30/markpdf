@@ -13,9 +13,9 @@ from .converter import convert_pdf_to_text
 def main():
     parser = argparse.ArgumentParser(
         prog="markpdf",
-        description="Fast, offline PDF & Image to Markdown & Text converter with diagram OCR and table extraction.",
+        description="Fast, offline PDF, PPTX & Image to Markdown & Text converter with diagram OCR and table extraction.",
     )
-    parser.add_argument("files", nargs="*", default=[], help="The PDF or image file(s) to convert (.pdf, .png, .jpg, .webp, .tiff).")
+    parser.add_argument("files", nargs="*", default=[], help="The PDF, PPTX or image file(s) to convert (.pdf, .pptx, .png, .jpg, .webp, .tiff).")
     parser.add_argument(
         "-f",
         "--format",

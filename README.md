@@ -1,6 +1,6 @@
 # markpdf
 
-**Fast, 100% offline PDF to Markdown & Text converter with embedded diagram OCR and table extraction.**
+**Fast, 100% offline PDF, PowerPoint & Image to Markdown converter with embedded diagram OCR and table extraction.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
@@ -10,12 +10,12 @@
 
 ## Why `markpdf`?
 
-Most PDF converters either:
+Most document converters either:
 1. **Drop visual data**: Miss text trapped inside architecture diagrams, flowcharts, screenshots, and figures.
 2. **Depend on paid cloud APIs**: Require paid OpenAI / Azure vision tokens to perform OCR (e.g. Microsoft MarkItDown).
 3. **Mangle document structure**: Turn normal headings or prose into broken table fragments.
 
-`markpdf` solves this by combining the high-speed **C++ MuPDF engine (`PyMuPDF`)** with **local Tesseract OCR**, generating clean GitHub-flavored Markdown or plain text completely offline.
+`markpdf` solves this by combining the high-speed **C++ MuPDF engine (`PyMuPDF`)**, **python-pptx**, and **local Tesseract OCR**, generating clean GitHub-flavored Markdown or plain text completely offline.
 
 ---
 
@@ -35,8 +35,9 @@ Tested directly on a 34-page academic research proposal containing prose, 6 tabl
 
 ## Key Features
 
-- **📑 Smart Hybrid Extraction**: Instant native text extraction on digital pages; automatic OCR fallback on scanned/rasterized pages.
-- **📊 Native Markdown Tables**: Uses MuPDF's table detection engine (`page.find_tables()`) to convert tabular grids directly into GitHub-flavored Markdown tables.
+- **📑 Smart Hybrid PDF Extraction**: Instant native text extraction on digital pages; automatic OCR fallback on scanned/rasterized pages.
+- **📽️ Native PowerPoint (`.pptx`) Support**: Converts slides, nested bullet hierarchies, speaker notes, slide tables, and embedded slide diagrams.
+- **📊 Native Markdown Tables**: Converts tabular grids in PDFs and PowerPoint slides directly into GitHub-flavored Markdown tables.
 - **🖼️ Diagram & Graphic OCR**: Isolates embedded figures, flowcharts, and diagrams, upscales small labels using Lanczos resampling, and weaves the OCR'd text into natural reading order.
 - **🏷️ Markdown Blockquotes**: Diagram text in Markdown mode is neatly styled in blockquotes (`> **[Diagram/Graphic OCR]**`).
 - **⚡ Blazing Fast**: Powered by PyMuPDF's C++ bindings rather than slow pure-Python PDF parsers.
@@ -75,6 +76,9 @@ pip install -e .
 ```bash
 # Convert PDF to Markdown (.md) with tables and diagram OCR
 markpdf -m document.pdf
+
+# Convert PowerPoint (.pptx) to Markdown with tables, notes and diagram OCR
+markpdf -m presentation.pptx
 
 # Convert standalone image (.png, .jpg, .webp) to Markdown via OCR
 markpdf -m screenshot.png

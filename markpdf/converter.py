@@ -27,9 +27,10 @@ except ImportError:
 # Local modules
 from .ocr import is_ocr_available, ocr_image_pil, ocr_pixmap
 from .tables import extract_page_tables
+from .pptx_converter import convert_pptx
 
 SUPPORTED_IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".tiff", ".bmp")
-SUPPORTED_EXTENSIONS = (".pdf",) + SUPPORTED_IMAGE_EXTENSIONS
+SUPPORTED_EXTENSIONS = (".pdf", ".pptx") + SUPPORTED_IMAGE_EXTENSIONS
 
 
 def format_markdown_heading(text: str) -> str:
@@ -209,6 +210,19 @@ def convert_pdf_to_text(
         return None
 
     lower_path = file_path.lower()
+
+    # PowerPoint presentation support
+    if lower_path.endswith(".pptx"):
+        return convert_pptx(
+            pptx_path=file_path,
+            output_path=output_path,
+            output_format=output_format,
+            ocr_graphics=ocr_graphics,
+            lang=lang,
+            label_graphics=label_graphics,
+            verbose=verbose,
+            add_page_markers=add_page_markers,
+        )
 
     # Standalone image support
     if lower_path.endswith(SUPPORTED_IMAGE_EXTENSIONS):

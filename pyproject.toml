@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "markpdf"
-version = "0.2.0"
-description = "Fast, offline PDF to Markdown & Text converter with diagram OCR and table extraction."
+version = "0.3.0"
+description = "Fast, offline PDF, PPTX & Image to Markdown & Text converter with diagram OCR and table extraction."
 readme = "README.md"
 authors = [{ name = "Joshua Washington" }]
 license = { text = "MIT" }
@@ -17,6 +17,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+pptx = [
+    "python-pptx>=1.0.0",
+]
+all = [
+    "python-pptx>=1.0.0",
+    "pytest>=7.0.0",
+]
 dev = [
     "pytest>=7.0.0",
 ]
